@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TokoSann.ID Premium</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
+</head>
+<body>
+
+<div id="tsparticles"></div>
+
+<div class="loader" id="loader">Loading TokoSann.ID...</div>
+
+<header>TokoSann.ID - Revenue Dashboard</header>
+
+<div class="container">
+
+
+<div class="summary-container">
+
+  <div class="summary-item">
+    <span>Jumlah Orderan</span>
+    <h2>7.236 Transaksi</h2>
+  </div>
+
+  <div class="summary-item">
+    <span>
+      Total Omset
+      <span id="toggleEye" onclick="toggleOmset()" style="cursor:pointer; margin-left:8px;">
+        👁️
+      </span>
+    </span>
+    <h2 id="summaryOmset">Rp 38.288.272</h2>
+  </div>
+
+</div>
+
+
+  
+<div class="card">
+<h3>Revenue Analytics</h3>
+
+<div class="slide-control">
+<button onclick="prevSlide()">⬅</button>
+<span id="slideTitle">15 - 31 Januari</span>
+<button onclick="nextSlide()">➡</button>
+</div>
+
+<canvas id="revenueChart"></canvas>
+</div>
+
+<div class="card">
+<h3>Daftar Order</h3>
+<input type="text" id="search" placeholder="Cari Invoice..." onkeyup="searchData()">
+<button onclick="exportPDF()">Export PDF</button>
+
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Invoice</th>
+<th>Game</th>
+<th>Status</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody id="tableData"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+/* PARTICLES */
+tsParticles.load("tsparticles", {
+particles: {
+number: { value: 60 },
+size: { value: 3 },
+move: { speed: 1 },
+opacity: { value: 0.3 }
+}
+});
+
+/* DATA GENERATE */
+const games=["FF","ML","PUBG"];
+let data=[];
+let revenueJan=[];
+let revenueFeb=[];
+let base=5000000;
+
+/* Revenue Jan 15-31 */
+for(let i=15;i<=31;i++){
+base+=Math.floor(Math.random()*2000000)+500000;
+if(Math.random()>0.7) base-=Math.floor(Math.random()*300000);
+revenueJan.push(base);
+}
+
+/* Revenue Feb 1-15 */
+for(let i=1;i<=15;i++){
+base+=Math.floor(Math.random()*240000)+800000;
+if(Math.random()>0.8) base-=Math.floor(Math.random()*300000);
+revenueFeb.push(base);
+}
+
+/* 1000 ORDER */
+for(let i=1;i<=1000;i++){
+let status=i<=910?"Success":"Pending";
+let game=games[Math.floor(Math.random()*3)];
+let nominal=Math.floor(Math.random()*200000)+20000;
+let date=new Date(2026,0,15);
+date.setDate(date.getDate()+Math.floor(Math.random()*30));
+data.push({
+tanggal:date.toLocaleDateString(),
+invoice:"INV-"+Math.random().toString(36).substr(2,9).toUpperCase(),
+game:game,
+status:status,
+total:nominal
+});
+}
+
+/* TABLE LOAD */
+function loadTable(list=data){
+let html="";
+list.slice(0,200).forEach(d=>{
+html+=`<tr>
+<td>${d.tanggal}</td>
+<td>${d.invoice}</td>
+<td>${d.game}</td>
+<td>${d.status}</td>
+<td>Rp ${d.total.toLocaleString()}</td>
+</tr>`;
+});
+document.getElementById("tableData").innerHTML=html;
+}
+loadTable();
+
+function searchData(){
+let val=document.getElementById("search").value.toLowerCase();
+let filtered=data.filter(d=>d.invoice.toLowerCase().includes(val));
+loadTable(filtered);
+}
+
+/* CHART SLIDE */
+let slideIndex=0;
+let chart;
+const ctx=document.getElementById("revenueChart").getContext("2d");
+
+function createChart(labels,dataSet){
+if(chart) chart.destroy();
+
+chart=new Chart(ctx,{
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:"Revenue",
+data:dataSet,
+borderColor:"#00c6ff",
+backgroundColor:"rgba(0,198,255,0.2)",
+fill:true,
+tension:0.4
+}]
+},
+options:{
+scales:{
+x:{ticks:{color:"#fff"}},
+y:{ticks:{color:"#fff"}}
+},
+plugins:{
+legend:{labels:{color:"#fff"}}
+}
+}
+});
+}
+
+function updateSlide(){
+if(slideIndex===0){
+createChart(
+Array.from({length:17},(_,i)=>15+i),
+revenueJan
+);
+document.getElementById("slideTitle").innerText="15 - 31 Januari";
+}else{
+createChart(
+Array.from({length:15},(_,i)=>1+i),
+revenueFeb
+);
+document.getElementById("slideTitle").innerText="1 - 15 Februari";
+}
+}
+
+function nextSlide(){
+slideIndex=(slideIndex+1)%2;
+updateSlide();
+}
+
+function prevSlide(){
+slideIndex=(slideIndex-1+2)%2;
+updateSlide();
+}
+
+updateSlide();
+
+/* EXPORT PDF */
+function exportPDF(){
+const { jsPDF } = window.jspdf;
+let doc=new jsPDF();
+doc.text("Laporan TokoSann.ID",20,20);
+let y=30;
+data.slice(0,40).forEach(d=>{
+doc.text(`${d.tanggal} | ${d.invoice} | ${d.game} | ${d.status} | Rp ${d.total}`,20,y);
+y+=7;
+});
+doc.save("Laporan_TokoSann.pdf");
+}
+
+/* LOADER */
+setTimeout(()=>{
+document.getElementById("loader").style.display="none";
+},2000);
+</script>
+
+
+<script>
+  let omsetVisible = true;
+
+function toggleOmset() {
+  const omsetElement = document.getElementById("summaryOmset");
+
+  if (omsetVisible) {
+    omsetElement.innerText = "Rp xx.xxx.xxx";
+    document.getElementById("toggleEye").innerText = "xxx";
+  } else {
+    omsetElement.innerText = "Rp 38.288.272";
+    document.getElementById("toggleEye").innerText = "👁️";
+  }
+
+  omsetVisible = !omsetVisible;
+}
+</script>
+
+  
+</body>
+</html>
